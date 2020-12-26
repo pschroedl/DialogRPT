@@ -44,18 +44,19 @@ class Master:
 
     def parallel(self):
         if self.opt.cuda:
-            self._model = self._model.cuda()
-        n_gpu = torch.cuda.device_count()
-        if self.opt.cuda and n_gpu > 1:
-            print('paralleling on %i GPU'%n_gpu)
-            self.model = torch.nn.DataParallel(self._model)
-            # after DataParallel, a warning about RNN weights shows up every batch
-            warnings.filterwarnings("ignore")
-            # after DataParallel, attr of self.model become attr of self.model.module
-            self._model = self.model.module
-            self.model.core = self.model.module.core
-            self.model.tokenizer = self._model.tokenizer
-        else:
+            # self._model = self._model.cuda()
+            self._model = self._model.to(torch.device('cuda:%i'%(self.opt.device)))
+        # n_gpu = torch.cuda.device_count()
+        # if self.opt.cuda and n_gpu > 1:
+        #     print('paralleling on %i GPU'%n_gpu)
+        #     self.model = torch.nn.DataParallel(self._model)
+        #     # after DataParallel, a warning about RNN weights shows up every batch
+        #     warnings.filterwarnings("ignore")
+        #     # after DataParallel, attr of self.model become attr of self.model.module
+        #     self._model = self.model.module
+        #     self.model.core = self.model.module.core
+        #     self.model.tokenizer = self._model.tokenizer
+        # else:
             self.model = self._model
         if self.opt.task == 'train':
             self.optimizer = torch.optim.Adam(self._model.parameters(), lr=self.opt.lr)
@@ -79,13 +80,26 @@ class Master:
             self.model.train()
             self.optimizer.zero_grad()
             batch = self.feeder.get_batch(self.opt.batch)
-            pred = self.model.forward(batch)
-            loss = self.loss(pred)
-            loss = loss.mean()      # in case of parallel-training
+            if self.opt.mixed_precision:
+                with torch.cuda.amp.autocast():
+                    pred = self.model.forward(batch)
+                    loss = self.loss(pred)
+                    # loss = loss.mean() 
+                scaler = torch.cuda.amp.GradScaler()
+                scaler.scale(loss).backward()
 
-            loss.backward()    
-            torch.nn.utils.clip_grad_norm_(self.model.parameters(), self.opt.clip)
-            self.optimizer.step()
+                torch.nn.utils.clip_grad_norm_(self.model.parameters(), self.opt.clip)
+
+                scaler.step(self.optimizer)
+                scaler.update()
+            else:
+                pred = self.model.forward(batch)                
+                loss = self.loss(pred)
+                # loss = loss.mean()      # in case of parallel-training
+
+                loss.backward()
+                torch.nn.utils.clip_grad_norm_(self.model.parameters(), self.opt.clip)
+                self.optimizer.step()
 
             acc = (pred > 0.5).float().mean().item()
             acc_history.append(acc)
@@ -159,13 +173,19 @@ class Master:
         rank_gap = 0
         n_batch = int(self.opt.vali_size/self.opt.batch)
         self.feeder.reset('vali')
-        
+
         for _ in range(n_batch):
             batch = self.feeder.get_batch(self.opt.batch, sub='vali', 
                     min_score_gap=self.opt.min_score_gap, min_rank_gap=self.opt.min_rank_gap)
-            with torch.no_grad():
-                pred = self.model.forward(batch)
-                loss += self.loss(pred)
+            if self.opt.mixed_precision:
+                with torch.cuda.amp.autocast():
+                    with torch.no_grad():
+                        pred = self.model.forward(batch)
+                        loss += self.loss(pred)
+            else:
+                with torch.no_grad():
+                    pred = self.model.forward(batch)
+                    loss += self.loss(pred)                
             acc += (pred > 0.5).float().mean()
             score_gap += (np.array(batch['score_pos']) - np.array(batch['score_neg'])).mean()
             rank_gap += (np.array(batch['rank_pos']) - np.array(batch['rank_neg'])).mean()

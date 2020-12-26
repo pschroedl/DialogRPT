@@ -23,6 +23,8 @@ class Option:
         self.min_score_gap = args.min_score_gap
         self.min_rank_gap = args.min_rank_gap
         self.max_hr_gap = args.max_hr_gap
+        self.mixed_precision = args.mixed_precision
+        self.device = args.device
         self.mismatch = args.mismatch
         self.fld_data = args.data
         if args.task == 'train' or self.path_load is None:
@@ -63,6 +65,8 @@ if __name__ == "__main__":
     parser.add_argument('--min_score_gap', type=int)
     parser.add_argument('--min_rank_gap', type=float)
     parser.add_argument('--max_hr_gap', type=float, default=1)
+    parser.add_argument('--mixed_precision', type=bool, default=False) # True == 16
+    parser.add_argument('--device', type=int, default=0)  # for non multi-processing gpu # selection
     args = parser.parse_args()
 
     opt = Option(args)
