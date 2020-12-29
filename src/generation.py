@@ -9,7 +9,7 @@ class GPT2Generator:
     def __init__(self, path, cuda):
         from transformers19 import GPT2Tokenizer, GPT2LMHeadModel, GPT2Config
         self.tokenizer = GPT2Tokenizer.from_pretrained('gpt2')
-        model_config = GPT2Config(n_embd=1024, n_layer=24, n_head=16)        
+        model_config = GPT2Config(n_embd=768, n_layer=12, n_head=12)        
         self.model = GPT2LMHeadModel(model_config)
         download_model(path)
         print('loading from '+path)
