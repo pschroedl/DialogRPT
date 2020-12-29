@@ -6,7 +6,7 @@ import numpy as np
 from feeder import Feeder
 from model import Scorer, JointScorer
 import matplotlib.pyplot as plt
-
+from apex import amp
 
 class Master:
 
@@ -44,8 +44,8 @@ class Master:
 
     def parallel(self):
         if self.opt.cuda:
-            # self._model = self._model.cuda()
-            self._model = self._model.to(torch.device('cuda:%i'%(self.opt.device)))
+            self._model = self._model.cuda()
+            # self._model = self._model.to(torch.device('cuda:%i'%(self.opt.device)))
         # n_gpu = torch.cuda.device_count()
         # if self.opt.cuda and n_gpu > 1:
         #     print('paralleling on %i GPU'%n_gpu)
@@ -60,7 +60,8 @@ class Master:
             self.model = self._model
         if self.opt.task == 'train':
             self.optimizer = torch.optim.Adam(self._model.parameters(), lr=self.opt.lr)
-        
+            if self.opt.mixed_precision:
+                self.model, self.optimizer = amp.initialize(self.model, self.optimizer, opt_level="O2")
 
     def train(self):
         vali_loss, best_acc = self.vali()
@@ -81,18 +82,34 @@ class Master:
             self.optimizer.zero_grad()
             batch = self.feeder.get_batch(self.opt.batch)
             if self.opt.mixed_precision:
-                with torch.cuda.amp.autocast():
-                    pred = self.model.forward(batch)
-                    loss = self.loss(pred)
-                    loss = loss.mean()
-                scaler = torch.cuda.amp.GradScaler()
-                scaler.scale(loss).backward()
-                scaler.unscale_(self.optimizer)
+                # with torch.cuda.amp.autocast():
+                #     pred = self.model.forward(batch)
+                #     loss = self.loss(pred)
+                #     loss = loss.mean()
+                # scaler = torch.cuda.amp.GradScaler()
+                # scaler.scale(loss).backward()
+                # scaler.unscale_(self.optimizer)
 
-                torch.nn.utils.clip_grad_norm_(self.model.parameters(), self.opt.clip_max_norm, self.opt.clip_norm_type)
+                # if (self.opt.clip_norm_type !=-1):
+                #     torch.nn.utils.clip_grad_norm_(self.model.parameters(), self.opt.clip_max_norm, self.opt.clip_norm_type)
 
-                scaler.step(self.optimizer)
-                scaler.update()
+                # scaler.step(self.optimizer)
+                # scaler.update()
+
+                pred = self.model.forward(batch)
+                loss = self.loss(pred)
+                loss = loss.mean()
+
+                with amp.scale_loss(loss, self.optimizer) as scaled_loss:
+                    scaled_loss.backward()
+
+                if (self.opt.clip_norm_type !=-1):
+                    torch.nn.utils.clip_grad_norm_(
+                        amp.master_params(self.optimizer),
+                        self.opt.clip_max_norm,
+                        self.opt.clip_norm_type)
+
+                self.optimizer.step()
             else:
                 pred = self.model.forward(batch)                
                 loss = self.loss(pred)
@@ -179,10 +196,10 @@ class Master:
             batch = self.feeder.get_batch(self.opt.batch, sub='vali', 
                     min_score_gap=self.opt.min_score_gap, min_rank_gap=self.opt.min_rank_gap)
             if self.opt.mixed_precision:
-                with torch.cuda.amp.autocast():
-                    with torch.no_grad():
-                        pred = self.model.forward(batch)
-                        loss += self.loss(pred)
+                # with torch.cuda.amp.autocast():
+                with torch.no_grad():
+                    pred = self.model.forward(batch)
+                    loss += self.loss(pred)
             else:
                 with torch.no_grad():
                     pred = self.model.forward(batch)

@@ -123,11 +123,11 @@ class Feeder:
         ids_pos = torch.LongTensor(ids_pos)
         ids_neg = torch.LongTensor(ids_neg)
         if self.opt.cuda:
-            if self.opt.device:
-                device = 'cuda:%i'%(self.opt.device)
-                ids_pos = ids_pos.cuda(device)
-                ids_neg = ids_neg.cuda(device)
-            else:
+            # if self.opt.device:
+            #     device = 'cuda:%i'%(self.opt.device)
+            #     ids_pos = ids_pos.cuda(device)
+            #     ids_neg = ids_neg.cuda(device)
+            # else:
                 ids_pos = ids_pos.cuda()
                 ids_neg = ids_neg.cuda()
         return {
