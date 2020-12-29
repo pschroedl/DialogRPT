@@ -75,8 +75,8 @@ class ScorerBase(torch.nn.Module):
 class Scorer(ScorerBase):
     def __init__(self, opt):
         super().__init__(opt)
-        n_embd = 768
-        config = GPT2Config(n_embd=n_embd, n_layer=12, n_head=12)
+        n_embd = 1024
+        config = GPT2Config(n_embd=n_embd, n_layer=24, n_head=16)
         self.transformer = GPT2Model(config)
         self.score = torch.nn.Linear(n_embd, 1, bias=False)
         
@@ -84,13 +84,10 @@ class Scorer(ScorerBase):
     def core(self, ids, l_ids, return_logits=False):
         n = ids.shape[0]
         attention_mask = torch.ones_like(ids)
-        # attention_mask = torch.nn.Parameter(torch.ones_like(ids, requires_grad=False, dtype=torch.float32), requires_grad=False)
-        # attention_mask.requires_grad=False
         for i in range(n):
             attention_mask[i, l_ids[i]:] *= 0
         hidden_states, _ = self.transformer(ids, attention_mask=attention_mask)
         logits = self.score(hidden_states).squeeze(-1)
-        logits = logits/400 - 0.7
         logits = torch.stack([logits[i, l_ids[i] - 1] for i in range(n)])
         if return_logits:
             return logits
