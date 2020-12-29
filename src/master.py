@@ -84,21 +84,22 @@ class Master:
                 with torch.cuda.amp.autocast():
                     pred = self.model.forward(batch)
                     loss = self.loss(pred)
-                    # loss = loss.mean() 
+                    loss = loss.mean()
                 scaler = torch.cuda.amp.GradScaler()
                 scaler.scale(loss).backward()
+                scaler.unscale_(self.optimizer)
 
-                torch.nn.utils.clip_grad_norm_(self.model.parameters(), self.opt.clip)
+                torch.nn.utils.clip_grad_norm_(self.model.parameters(), self.opt.clip_max_norm, self.opt.clip_norm_type)
 
                 scaler.step(self.optimizer)
                 scaler.update()
             else:
                 pred = self.model.forward(batch)                
                 loss = self.loss(pred)
-                # loss = loss.mean()      # in case of parallel-training
+                loss = loss.mean()      # in case of parallel-training
 
                 loss.backward()
-                torch.nn.utils.clip_grad_norm_(self.model.parameters(), self.opt.clip)
+                torch.nn.utils.clip_grad_norm_(self.model.parameters(), self.opt.clip_max_norm)
                 self.optimizer.step()
 
             acc = (pred > 0.5).float().mean().item()
