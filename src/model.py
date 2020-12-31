@@ -90,7 +90,13 @@ class Scorer(ScorerBase):
             attention_mask[i, l_ids[i]:] *= 0
         hidden_states, _ = self.transformer(ids, attention_mask=attention_mask)
         logits = self.score(hidden_states).squeeze(-1)
-        logits = logits/400 - 0.7
+        # logits = logits/400 - 0.7
+            
+        # if (self.opt.norm_type == 'std'):
+        logits = (logits - logits.mean())/logits.std()
+        # elif (self.opt.norm =='feature'):
+        #     logits = 
+
         logits = torch.stack([logits[i, l_ids[i] - 1] for i in range(n)])
         if return_logits:
             return logits

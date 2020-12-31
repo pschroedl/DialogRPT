@@ -30,6 +30,8 @@ class Option:
         self.device = args.device
         self.clip_max_norm = args.clip_max_norm
         self.clip_norm_type = args.clip_norm_type
+        self.norm_type = args.norm_type
+
         if args.task == 'train' or self.path_load is None:
             self.fld_out = 'out/%i'%time.time()
         else:
@@ -71,6 +73,7 @@ if __name__ == "__main__":
     parser.add_argument('--device', type=int, default=0)  # for non multi-processing gpu # selection
     parser.add_argument('--clip_max_norm', type=float, default=1) # settings for gradient clipping
     parser.add_argument('--clip_norm_type', type=float, default=2)
+    parser.add_argument('--norm_type', type=str, default='std')
     args = parser.parse_args()
 
     opt = Option(args)
