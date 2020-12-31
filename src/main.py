@@ -25,13 +25,17 @@ class Option:
         self.max_hr_gap = args.max_hr_gap
         self.mismatch = args.mismatch
         self.fld_data = args.data
+
+        self.mixed_precision = args.mixed_precision
+        self.device = args.device
+        self.clip_max_norm = args.clip_max_norm
+        self.clip_norm_type = args.clip_norm_type
         if args.task == 'train' or self.path_load is None:
             self.fld_out = 'out/%i'%time.time()
         else:
             self.fld_out = 'out/temp'
         os.makedirs(self.fld_out, exist_ok=True)
 
-        self.clip = 1
         self.step_max = 1e6
         self.step_print = 10
         self.step_vali = 100
@@ -63,6 +67,10 @@ if __name__ == "__main__":
     parser.add_argument('--min_score_gap', type=int)
     parser.add_argument('--min_rank_gap', type=float)
     parser.add_argument('--max_hr_gap', type=float, default=1)
+    parser.add_argument('--mixed_precision', type=bool, default=False) # True == 16
+    parser.add_argument('--device', type=int, default=0)  # for non multi-processing gpu # selection
+    parser.add_argument('--clip_max_norm', type=float, default=1) # settings for gradient clipping
+    parser.add_argument('--clip_norm_type', type=float, default=2)
     args = parser.parse_args()
 
     opt = Option(args)
