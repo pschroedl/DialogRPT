@@ -44,8 +44,8 @@ class Master:
 
     def parallel(self):
         if self.opt.cuda:
-            self._model = self._model.cuda()
-            # self._model = self._model.to(torch.device('cuda:%i'%(self.opt.device)))
+            # self._model = self._model.cuda()
+            self._model = self._model.to(torch.device('cuda:%i'%(self.opt.device)))
         # n_gpu = torch.cuda.device_count()
         # if self.opt.cuda and n_gpu > 1:
         #     print('paralleling on %i GPU'%n_gpu)

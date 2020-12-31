@@ -31,6 +31,7 @@ class Option:
         self.clip_max_norm = args.clip_max_norm
         self.clip_norm_type = args.clip_norm_type
         self.norm_type = args.norm_type
+        self.norm_scale = args.norm_scale
 
         if args.task == 'train' or self.path_load is None:
             self.fld_out = 'out/%i'%time.time()
@@ -74,6 +75,7 @@ if __name__ == "__main__":
     parser.add_argument('--clip_max_norm', type=float, default=1) # settings for gradient clipping
     parser.add_argument('--clip_norm_type', type=float, default=2)
     parser.add_argument('--norm_type', type=str, default='std')
+    parser.add_argument('--norm_scale', type=int, default=1)
     args = parser.parse_args()
 
     opt = Option(args)
